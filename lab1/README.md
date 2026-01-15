@@ -49,7 +49,7 @@ pip install -r requirements.txt
 #### 3.1. Подготовка данных
 
 Поместите файл `UEFA Champions League 2016-2022 Data 3.xlsx` в корневую папку проекта. 
-Найти его можно по [тут]((https://www.kaggle.com/datasets/cbxkgl/uefa-champions-league-2016-2022-data)) 
+Найти его можно [тут](https://www.kaggle.com/datasets/cbxkgl/uefa-champions-league-2016-2022-data)
 
 #### 3.2. Создание таблиц
 
