@@ -96,10 +96,11 @@ def predict_attendance(season, home_team, away_team, stadium):
         st.error(f"Ошибка предсказания: {e}")
         return None
 
-st.sidebar.title("Меню")
-page = st.sidebar.selectbox("Выберите страницу:", ["Главная", "EDA", "ML"])
+st.set_page_config(page_title="UEFA Champions League", layout="wide")
 
-if page == "Главная":
+tab1, tab2, tab3 = st.tabs(["Главная", "EDA", "ML"])
+
+with tab1:
     st.title("Анализ данных UEFA Champions League")
     st.write("Клиентское приложение — все данные с FastAPI сервера")
     
@@ -134,128 +135,149 @@ if page == "Главная":
             else:
                 st.warning(f"Не удалось загрузить {name}")
 
-elif page == "EDA":
-    st.title("Exploratory Data Analysis (EDA)")
+with tab2:
+    st.title("Exploratory Data Analysis")
     
-    st.subheader("Топ команд по забитым голам")
-    top_teams = fetch_eda_top_teams(10)
-    if not top_teams.empty:
-        st.dataframe(top_teams)
-        st.bar_chart(top_teams.set_index("TEAM")["goals_scored"])
-    else:
-        st.warning("Не удалось загрузить данные")
+    eda_tabs = st.tabs(["Команды", "Игроки", "Общая статистика"])
     
-    st.subheader("Топ команд по сезонам")
-    top_season = fetch_eda_top_teams_season(10)
-    if not top_season.empty:
-        st.dataframe(top_season)
-    
-    st.subheader("Статистика игрока")
-    player_id = st.text_input("Введите PLAYER_ID:", value="ply1479")
-    if st.button("Получить статистику"):
-        stats = fetch_player_stats(player_id)
-        if stats:
-            st.json(stats)  
+    with eda_tabs[0]:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Топ команд по забитым голам")
+            top_teams = fetch_eda_top_teams(10)
+            if not top_teams.empty:
+                st.dataframe(top_teams)
+                st.bar_chart(top_teams.set_index("TEAM")["goals_scored"])
+            else:
+                st.warning("Не удалось загрузить данные")
+        
+        with col2:
+            st.subheader("Топ команд по сезонам")
+            top_season = fetch_eda_top_teams_season(10)
+            if not top_season.empty:
+                st.dataframe(top_season)
+            else:
+                st.warning("Не удалось загрузить данные")
+        
+        st.subheader("Среднее количество голов за матч по командам")
+        team_avg_goals_df = fetch_team_avg_goals(limit=10)
+        if not team_avg_goals_df.empty:
+            st.dataframe(team_avg_goals_df)
+            st.bar_chart(team_avg_goals_df.set_index("TEAM")["avg_goals"])
         else:
-            st.warning("Игрок не найден или ошибка сервера")
-
-    st.subheader("Общее количество голов")
-    total_goals = fetch_total_goals()
-    if total_goals:
-        st.metric("Всего голов", total_goals["total_goals"])
-
-    st.subheader("Средний возраст игроков, забивших пенальти")
-    penalty_age = fetch_penalty_avg_age()
-
-    if penalty_age:
-        if penalty_age.get("avg_age") is not None:
-            st.metric("Средний возраст", f"{penalty_age['avg_age']} лет")
-        else:
-            st.warning(penalty_age.get("message", "Нет данных"))
-
-
-    st.subheader("Среднее количество голов за матч по командам")
-    team_avg_goals_df = fetch_team_avg_goals(limit=10)
-
-    if not team_avg_goals_df.empty:
-        st.dataframe(team_avg_goals_df)
-        st.bar_chart(
-            team_avg_goals_df.set_index("TEAM")["avg_goals"]
-        )
-    else:
-        st.warning("Не удалось загрузить данные")
-
+            st.warning("Не удалось загрузить данные")
     
+    with eda_tabs[1]:
+        st.subheader("Статистика игрока")
+        
+        player_id = st.text_input("Введите PLAYER_ID:", value="ply1479")
+        
+        if st.button("Получить статистику"):
+            stats = fetch_player_stats(player_id)
+            if stats:
+                st.json(stats)
+            else:
+                st.warning("Игрок не найден или ошибка сервера")
+    
+    with eda_tabs[2]:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Общее количество голов")
+            total_goals = fetch_total_goals()
+            if total_goals:
+                st.metric("Всего голов", total_goals["total_goals"])
+        
+        with col2:
+            st.subheader("Средний возраст игроков, забивших пенальти")
+            penalty_age = fetch_penalty_avg_age()
+            if penalty_age:
+                if penalty_age.get("avg_age") is not None:
+                    st.metric("Средний возраст", f"{penalty_age['avg_age']} лет")
+                else:
+                    st.warning(penalty_age.get("message", "Нет данных"))
 
-
-elif page == "ML":
-
+with tab3:
     st.title("Machine Learning")
-
-    st.subheader("Метрики модели")
-    st.write("""
-        - MAE: 8300.6039
-        - MSE: 177964266.4950
-        - RMSE: 13340.3248
-        - MAPE: 7417.345%
-        - R2: 0.6979
-    """)
-
-    st.subheader("Визуализация модели")
-    try:
-        img = Image.open("model_info.png")
-        st.image(img, caption="Статистика модели KNN")
-    except:
-        st.warning("Файл не найден")
-
-    st.subheader("Предсказание посещаемости")
-    season = st.text_input("Сезон", value="2020-2021")
-    home_team = st.text_input("Домашняя команда", value="Borussia Dortmund")
-    away_team = st.text_input("Гостевая команда", value="Manchester City")
-    stadium = st.text_input("Стадион", value="Signal Iduna Park")
-
-    if st.button("Предсказать"):
-        result = predict_attendance(season, home_team, away_team, stadium)
-        if result:
-            st.success(f"Ожидаемая посещаемость: {result['predicted_attendance']} человек")
-
-
-    st.subheader("AutoML с PyCaret")
-
-    st.write("Вы можете обучить модель PyCaret или сделать предсказание с существующей AutoML-моделью.")
-
-    with st.expander("Обучить новую AutoML модель"):
-        train_model_name = st.text_input("Имя для модели (оставьте пустым для авто):", value="")
-        if st.button("Обучить AutoML"):
-            payload = {
-                "target": "ATTENDANCE",
-                "categorical_features": ["SEASON","HOME_TEAM","AWAY_TEAM","STADIUM"],
-                "normalize": True
-            }
-            response = requests.post(f"{API_URL}/train_automl", json=payload)
-            if response.status_code == 200:
-                data = response.json()
-                st.success(f"Модель обучена и сохранена под именем: {data['model_name']}")
-                st.write("Метрики моделей:")
-                st.dataframe(pd.DataFrame(data['metrics']))
-                st.write("Логи обучения:")
-                st.dataframe(pd.DataFrame(data['logs']))
-            else:
-                st.error(f"Ошибка обучения: {response.text}")
-
-    with st.expander("Предсказать посещаемость с AutoML моделью"):
-        auto_model_name = st.text_input("Имя модели для предсказания:", value="attendance_automl_model")
-        if st.button("Предсказать с AutoML"):
-            payload = {
-                "SEASON": season,
-                "HOME_TEAM": home_team,
-                "AWAY_TEAM": away_team,
-                "STADIUM": stadium,
-                "model_name": auto_model_name
-            }
-            response = requests.post(f"{API_URL}/predict_automl", json=payload)
-            if response.status_code == 200:
-                result = response.json()
-                st.success(f"Ожидаемая посещаемость: {result['predicted_attendance']} человек")
-            else:
-                st.error(f"Ошибка предсказания: {response.text}")
+    
+    ml_tabs = st.tabs(["Модель", "Предсказание", "AutoML"])
+    
+    with ml_tabs[0]:
+        st.subheader("Метрики модели")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("MAE", "8300.60")
+            st.metric("MSE", "177964266.50")
+            st.metric("RMSE", "13340.32")
+        with col2:
+            st.metric("MAPE", "7417.35%")
+            st.metric("R2", "0.70")
+        
+        st.subheader("Визуализация модели")
+        try:
+            img = Image.open("model_info.png")
+            st.image(img, caption="Статистика модели KNN")
+        except:
+            st.info("Файл model_info.png не найден")
+    
+    with ml_tabs[1]:
+        st.subheader("Предсказание посещаемости")
+        
+        with st.form("prediction_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                season = st.text_input("Сезон", value="2020-2021")
+                home_team = st.text_input("Домашняя команда", value="Borussia Dortmund")
+            with col2:
+                away_team = st.text_input("Гостевая команда", value="Manchester City")
+                stadium = st.text_input("Стадион", value="Signal Iduna Park")
+            
+            submitted = st.form_submit_button("Предсказать")
+            
+            if submitted:
+                result = predict_attendance(season, home_team, away_team, stadium)
+                if result:
+                    st.success(f"Ожидаемая посещаемость: {result['predicted_attendance']} человек")
+    
+    with ml_tabs[2]:
+        st.write("Вы можете обучить модель PyCaret или сделать предсказание с существующей AutoML-моделью.")
+        
+        automl_tabs = st.tabs(["Обучение", "Предсказание"])
+        
+        with automl_tabs[0]:
+            train_model_name = st.text_input("Имя для модели (оставьте пустым для авто):", value="")
+            if st.button("Обучить AutoML"):
+                payload = {
+                    "target": "ATTENDANCE",
+                    "categorical_features": ["SEASON","HOME_TEAM","AWAY_TEAM","STADIUM"],
+                    "normalize": True
+                }
+                response = requests.post(f"{API_URL}/train_automl", json=payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    st.success(f"Модель обучена и сохранена под именем: {data['model_name']}")
+                    st.write("Метрики моделей:")
+                    st.dataframe(pd.DataFrame(data['metrics']))
+                    st.write("Логи обучения:")
+                    st.dataframe(pd.DataFrame(data['logs']))
+                else:
+                    st.error(f"Ошибка обучения: {response.text}")
+        
+        with automl_tabs[1]:
+            auto_model_name = st.text_input("Имя модели для предсказания:", value="attendance_automl_model")
+            if st.button("Предсказать с AutoML"):
+                payload = {
+                    "SEASON": season,
+                    "HOME_TEAM": home_team,
+                    "AWAY_TEAM": away_team,
+                    "STADIUM": stadium,
+                    "model_name": auto_model_name
+                }
+                response = requests.post(f"{API_URL}/predict_automl", json=payload)
+                if response.status_code == 200:
+                    result = response.json()
+                    st.success(f"Ожидаемая посещаемость: {result['predicted_attendance']} человек")
+                else:
+                    st.error(f"Ошибка предсказания: {response.text}")

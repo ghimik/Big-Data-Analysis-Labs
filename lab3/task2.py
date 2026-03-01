@@ -19,10 +19,50 @@ import seaborn as sns
 def eda(df):
     print("Shape:", df.shape)
     print("Memory usage (bytes):", df.memory_usage(deep=True).sum())
+    
+    print("\n=== Баланс классов (качество вина) ===")
+    df_temp = df.copy()
+    df_temp['target'] = (df_temp['quality'] >= 6).astype(int)
+    class_dist = df_temp['target'].value_counts()
+    class_dist_pct = df_temp['target'].value_counts(normalize=True) * 100
+    
+    balance_df = pd.DataFrame({
+        "Количество": class_dist,
+        "Процент": class_dist_pct
+    })
+    balance_df.index = ["Низкое качество (0)", "Высокое качество (1)"]
+    print(balance_df)
+    print()
+    
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    
+    axes[0].bar(class_dist.index, class_dist.values, color=["orange", "green"], alpha=0.7)
+    axes[0].set_xticks([0, 1])
+    axes[0].set_xticklabels(["Низкое (0)", "Высокое (1)"])
+    axes[0].set_ylabel("Количество")
+    axes[0].set_title("Распределение целевой переменной (количество)")
+    
+    for i, v in enumerate(class_dist.values):
+        axes[0].text(i, v + 10, str(v), ha='center', fontweight='bold')
+    
+    axes[1].bar(class_dist_pct.index, class_dist_pct.values, color=["orange", "green"], alpha=0.7)
+    axes[1].set_xticks([0, 1])
+    axes[1].set_xticklabels(["Низкое (0)", "Высокое (1)"])
+    axes[1].set_ylabel("Процент (%)")
+    axes[1].set_title("Распределение целевой переменной (проценты)")
+    
+    for i, v in enumerate(class_dist_pct.values):
+        axes[1].text(i, v + 1, f"{v:.1f}%", ha='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
     print("\nNumeric summary:")
     print(df.describe().T)
     print("\nMissing values per column:")
     print(df.isna().sum())
+    
+    return balance_df
 
 def prepare_data(df):
     df = df.copy()
@@ -40,7 +80,7 @@ def build_pipelines():
     ])
     clf_knn = Pipeline([
         ("pre", numeric_transformer),
-        ("clf", KNeighborsClassifier())
+        ("clf", KNeighborsClassifier(n_neighbors=10))
     ])
     clf_log = Pipeline([
         ("pre", numeric_transformer),
@@ -71,7 +111,7 @@ def evaluate(model, X_test, y_test):
 
 def main():
     df = pd.read_csv("WineQT.csv") 
-    eda(df)
+    balance_info = eda(df)
     X, y, numeric_feats = prepare_data(df)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y

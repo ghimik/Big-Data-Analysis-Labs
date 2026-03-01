@@ -24,6 +24,42 @@ ssl._create_default_https_context = ssl._create_unverified_context
 def eda(df):
     print("Shape:", df.shape)
     print("Memory usage (bytes):", df.memory_usage(deep=True).sum())
+    
+    print("\n=== Баланс классов ===")
+    class_dist = df["survived"].value_counts()
+    class_dist_pct = df["survived"].value_counts(normalize=True) * 100
+    
+    balance_df = pd.DataFrame({
+        "Количество": class_dist,
+        "Процент": class_dist_pct
+    })
+    balance_df.index = ["Погиб (0)", "Выжил (1)"]
+    print(balance_df)
+    print()
+    
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    
+    axes[0].bar(class_dist.index, class_dist.values, color=["red", "green"], alpha=0.7)
+    axes[0].set_xticks([0, 1])
+    axes[0].set_xticklabels(["Погиб (0)", "Выжил (1)"])
+    axes[0].set_ylabel("Количество")
+    axes[0].set_title("Распределение целевой переменной (количество)")
+    
+    for i, v in enumerate(class_dist.values):
+        axes[0].text(i, v + 5, str(v), ha='center', fontweight='bold')
+    
+    axes[1].bar(class_dist_pct.index, class_dist_pct.values, color=["red", "green"], alpha=0.7)
+    axes[1].set_xticks([0, 1])
+    axes[1].set_xticklabels(["Погиб (0)", "Выжил (1)"])
+    axes[1].set_ylabel("Процент (%)")
+    axes[1].set_title("Распределение целевой переменной (проценты)")
+    
+    for i, v in enumerate(class_dist_pct.values):
+        axes[1].text(i, v + 1, f"{v:.1f}%", ha='center', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
 
